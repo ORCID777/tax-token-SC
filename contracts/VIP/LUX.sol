@@ -1,9 +1,4 @@
-/**
- *Submitted for verification at Etherscan.io on 2023-06-11
-*/
-
-// SPDX-License-Identifier: UNLICENSED
-
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
 interface ERC20 {
@@ -122,8 +117,6 @@ interface IRewards {
 contract FILX is ERC20, Ownable {
     uint256 private constant protectionTax = 300;
     uint256 private constant protectionWallet = 600; 
-    uint256 private protectionTaxTimestamp;
-    uint256 private protectionWalletTimestamp;
 
     address private WETH;
     address private DEAD = 0x000000000000000000000000000000000000dEaD;
@@ -136,9 +129,7 @@ contract FILX is ERC20, Ownable {
     uint256 private _totalSupply = 10000000 * 10 ** _decimals;
 
     uint256 public _maxTxAmount = _totalSupply / 100;
-    uint256 public _maxWalletAmount = _totalSupply / 100;
-
-    uint256 public _tmpMaxWalletAmount = _totalSupply / 2000;   
+    uint256 public _maxWalletAmount = _totalSupply / 100; 
 
     uint256 public _maxFee = 5;
 
@@ -249,11 +240,9 @@ contract FILX is ERC20, Ownable {
 
         uint256 amountReceived = amount; 
 
-        uint256 maxWalletAmount = block.timestamp < protectionWalletTimestamp ? _tmpMaxWalletAmount : _maxWalletAmount;
-        
         // Check if it's a buy transaction
         if(automatedMarketMakerPairs[sender]) {
-            require(_balances[recipient] + amount <= maxWalletAmount || isMaxWalletExempt[recipient], "Max Wallet Limit Exceeded");
+            require(_balances[recipient] + amount <= _maxWalletAmount || isMaxWalletExempt[recipient], "Max Wallet Limit Exceeded");
             require(amount <= _maxTxAmount || isTxLimitExempt[recipient], "TX Limit Exceeded");
             amountReceived = !isFeeExempt[recipient] ? takeBuyFee(sender, amount) : amount;
         }
@@ -324,10 +313,7 @@ contract FILX is ERC20, Ownable {
     // Fees
     function takeBuyFee(address sender, uint256 amount) internal returns (uint256){
         uint256 _realFee = totalBuyFee;
-        if (block.timestamp < protectionTaxTimestamp) {
-                _realFee = 50;
-            }
-
+     
         uint256 feeAmount = (amount * _realFee) / feeDenominator;
 
         require(_balances[sender] >= feeAmount, "Insufficient Balance for fee");
@@ -341,13 +327,10 @@ contract FILX is ERC20, Ownable {
 
     function takeSellFee(address sender, uint256 amount) internal returns (uint256){
         uint256 _realFee = totalSellFee;
-        if (block.timestamp < protectionTaxTimestamp) {
-                _realFee = 50;
-            }
-
+    
         uint256 feeAmount = (amount * _realFee) / feeDenominator;
 
-    require(_balances[sender] >= feeAmount, "Insufficient Balance for fee");
+        require(_balances[sender] >= feeAmount, "Insufficient Balance for fee");
 
         _balances[address(this)] += feeAmount;
         emit Transfer(sender, address(this), feeAmount);
@@ -368,8 +351,6 @@ contract FILX is ERC20, Ownable {
     function enableTrading() external onlyOwner {
         require(!tradingEnabled, "Trading is already enabled");
         tradingEnabled = true;
-        protectionTaxTimestamp = block.timestamp + protectionTax;
-        protectionWalletTimestamp = block.timestamp + protectionWallet;
     }
 
     function swapBack() internal swapping {
@@ -452,12 +433,12 @@ contract FILX is ERC20, Ownable {
     }
 
     function setMaxWallet(uint256 _newMaxWallet) external onlyOwner {
-        require(_newMaxWallet > _totalSupply / 2000, "Can't limit trading");
+        require(_newMaxWallet > _totalSupply / 100, "Can't limit trading");
         _maxWalletAmount = _newMaxWallet;
     }
 
     function setMaxTX(uint256 _newMaxTX) external onlyOwner {
-        require(_newMaxTX > _totalSupply / 2000, "Can't limit trading");
+        require(_newMaxTX > _totalSupply / 100, "Can't limit trading");
         _maxTxAmount = _newMaxTX;
     }
 
