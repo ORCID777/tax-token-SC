@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
 contract Staking is ReentrancyGuard, Ownable {
     IERC20 public stakingToken;
     uint256 public rewardInterval = 30 days;
+    address public admin;
 
     struct Stake{
         uint256 amount;
@@ -20,8 +21,19 @@ contract Staking is ReentrancyGuard, Ownable {
     event Staked(address indexed user, uint256 amount, uint256 startTime, uint256 lockTime);
     event Unstaked(address indexed user, uint256 amount);
 
+    modifier onlyAdmin(){
+        require(msg.sender == admin, "Only admin can perform this action");
+        _;
+    }
+
     constructor(IERC20 _stakingToken){
         stakingToken = _stakingToken;
+        admin = msg.sender;
+    }
+
+    function transferAdminship(address newAdmin) public onlyAdmin{
+        require(newAdmin != address(0), "New Admin can not be zero address");
+        admin = newAdmin;
     }
 
     function setRewardInterval(uint256 _interval) public {
@@ -43,7 +55,7 @@ contract Staking is ReentrancyGuard, Ownable {
 
     function unstake() external {
         Stake storage userStake = stakes[msg.sender];
-        require(block.timestamp >= userStake.startTime + userStake.lockTime, "Lockup period not yet passed);
+        require(block.timestamp >= userStake.startTime + userStake.lockTime, "Lockup period not yet passed");
 
         uint256 amount = userStake.amount;
         require(amount > 0, "No staked amount");
